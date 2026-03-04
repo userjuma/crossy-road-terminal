@@ -10,8 +10,8 @@ from datetime import date
 
 FPS = 15
 FRAME_TIME = 1.0 / FPS
-CAR_RIGHT = '==>'
-CAR_LEFT = '<=='
+CAR_RIGHT = 'o-o'
+CAR_LEFT = 'o-o'
 CAR_LEN = 3
 COIN_CHAR = 'o'
 WORLD_BUFFER = 10
@@ -141,16 +141,16 @@ def bell():
 def init_colors():
     curses.start_color()
     curses.use_default_colors()
-    pairs = [(1,curses.COLOR_BLACK,curses.COLOR_GREEN),(2,curses.COLOR_WHITE,curses.COLOR_BLACK),
-        (3,curses.COLOR_WHITE,curses.COLOR_BLUE),(4,curses.COLOR_YELLOW,-1),
-        (5,curses.COLOR_CYAN,-1),(6,curses.COLOR_RED,-1),
-        (7,curses.COLOR_YELLOW,curses.COLOR_GREEN),(8,curses.COLOR_YELLOW,curses.COLOR_BLACK),
-        (9,curses.COLOR_YELLOW,curses.COLOR_BLUE),(10,curses.COLOR_YELLOW,curses.COLOR_GREEN),
-        (11,curses.COLOR_RED,curses.COLOR_BLACK),(12,curses.COLOR_RED,curses.COLOR_YELLOW),
-        (13,curses.COLOR_WHITE,curses.COLOR_CYAN),(14,curses.COLOR_YELLOW,curses.COLOR_CYAN),
-        (15,curses.COLOR_BLUE,-1),(16,curses.COLOR_WHITE,curses.COLOR_RED),
-        (17,curses.COLOR_YELLOW,curses.COLOR_BLACK),(18,curses.COLOR_GREEN,-1),
-        (19,curses.COLOR_MAGENTA,-1),(20,curses.COLOR_WHITE,curses.COLOR_MAGENTA)]
+    pairs = [(1,curses.COLOR_GREEN,-1), (2,curses.COLOR_WHITE,-1),
+        (3,curses.COLOR_CYAN,-1), (4,curses.COLOR_YELLOW,-1),
+        (5,curses.COLOR_CYAN,-1), (6,curses.COLOR_RED,-1),
+        (7,curses.COLOR_GREEN,-1), (8,curses.COLOR_WHITE,-1),
+        (9,curses.COLOR_CYAN,-1), (10,curses.COLOR_YELLOW,-1),
+        (11,curses.COLOR_RED,-1), (12,curses.COLOR_YELLOW,-1),
+        (13,curses.COLOR_WHITE,-1), (14,curses.COLOR_CYAN,-1),
+        (15,curses.COLOR_BLUE,-1), (16,curses.COLOR_RED,-1),
+        (17,curses.COLOR_MAGENTA,-1), (18,curses.COLOR_GREEN,-1),
+        (19,curses.COLOR_MAGENTA,-1), (20,curses.COLOR_WHITE,-1)]
     for p in pairs:
         curses.init_pair(p[0],p[1],p[2])
 
@@ -465,14 +465,11 @@ def draw_lane(stdscr,sy,lane,sw,nl,fc,colorblind=False):
     lt=lane['type']
     if lt=='grass':
         col=night_attr(curses.color_pair(1),nl)
-        try:
-            stdscr.addstr(sy,0,' '*sw,col)
-            rng=random.Random(lane['row']*997)
-            for gx in range(0,sw,rng.choice([3,4,5])):
-                if gx<sw:
-                    ch=rng.choice([',','.',' ']) if not colorblind else '.'
-                    stdscr.addch(sy,gx,ch,col)
-        except curses.error: pass
+        rng=random.Random(lane['row']*997)
+        for gx in range(0,sw,rng.choice([4,5,7])):
+            if gx<sw:
+                try: stdscr.addch(sy,gx,'.',col)
+                except curses.error: pass
         if 'coins' in lane:
             cc=night_attr(curses.color_pair(10),nl)
             for coin in lane['coins']:
@@ -480,14 +477,7 @@ def draw_lane(stdscr,sy,lane,sw,nl,fc,colorblind=False):
                     try: stdscr.addch(sy,coin['x'],COIN_CHAR,cc|curses.A_BOLD)
                     except curses.error: pass
     elif lt in ('road','ice'):
-        if lt=='ice':
-            col=night_attr(curses.color_pair(3),nl)
-            fill='*' if colorblind else '~'
-        else:
-            col=night_attr(curses.color_pair(2),nl)
-            fill='#' if colorblind else '-'
-        try: stdscr.addstr(sy,0,fill*sw,col)
-        except curses.error: pass
+        col=night_attr(curses.color_pair(3) if lt=='ice' else curses.color_pair(8),nl)
         cs=CAR_RIGHT if lane['direction']=='right' else CAR_LEFT
         for c in lane.get('cars',[]):
             cx=int(c['x'])
@@ -497,9 +487,7 @@ def draw_lane(stdscr,sy,lane,sw,nl,fc,colorblind=False):
                     try: stdscr.addch(sy,px,ch,col|curses.A_BOLD)
                     except curses.error: pass
     elif lt=='river':
-        col=night_attr(curses.color_pair(3),nl)
-        try: stdscr.addstr(sy,0,'~'*sw,col)
-        except curses.error: pass
+        col=night_attr(curses.color_pair(9),nl)
         for lg in lane.get('logs',[]):
             lx=int(lg['x']); ls='['+('='*(lg['length']-2))+']'
             for i,ch in enumerate(ls):
@@ -511,8 +499,9 @@ def draw_lane(stdscr,sy,lane,sw,nl,fc,colorblind=False):
         tc=night_attr(curses.color_pair(11),nl)
         warn=(lane['train_x'] is None and lane['time_since_last']>=lane['cooldown'] and lane['warning_timer']>0)
         if warn and fc%6<3: tc=curses.color_pair(12)|curses.A_BOLD
-        try: stdscr.addstr(sy,0,('!' if warn else '-')*sw,tc)
-        except curses.error: pass
+        if warn:
+            try: stdscr.addstr(sy,0,'!'*sw,tc)
+            except curses.error: pass
         if lane['train_x'] is not None:
             tx=int(lane['train_x'])
             for i in range(lane['train_length']):
@@ -521,28 +510,25 @@ def draw_lane(stdscr,sy,lane,sw,nl,fc,colorblind=False):
                     try: stdscr.addch(sy,px,'=',tc|curses.A_BOLD)
                     except curses.error: pass
     elif lt=='wind':
-        col=night_attr(curses.color_pair(13),nl)
+        col=night_attr(curses.color_pair(5),nl)
         wc='>' if lane['wind_dir']=='right' else '<'
-        try: stdscr.addstr(sy,0,' '*sw,col)
-        except curses.error: pass
         rng=random.Random(lane['row']*1013+fc//4)
-        for wx in range(rng.randint(0,3),sw,rng.randint(4,7)):
+        for wx in range(rng.randint(0,3),sw,rng.randint(6,10)):
             if 0<=wx<sw:
                 try: stdscr.addch(sy,wx,wc,col)
                 except curses.error: pass
     elif lt=='mud':
-        col=night_attr(curses.color_pair(2),nl)
-        try:
-            fill='%' if colorblind else ':'
-            stdscr.addstr(sy,0,(fill[0]*sw)[:sw],col)
-        except curses.error: pass
+        col=night_attr(curses.color_pair(8),nl)
+        for mx in range(0,sw,3):
+            try: stdscr.addch(sy,mx,'"',col)
+            except curses.error: pass
     elif lt=='dead_end':
-        col=night_attr(curses.color_pair(2),nl)|curses.A_BOLD
+        col=night_attr(curses.color_pair(8),nl)|curses.A_BOLD
         gx=lane['gap_x']; gw=lane['gap_w']
         try:
             stdscr.addstr(sy,0,'|'*sw,col)
             for px in range(gx,min(gx+gw,sw)):
-                stdscr.addch(sy,px,' ',night_attr(curses.color_pair(1),nl))
+                stdscr.addch(sy,px,' ',col)
         except curses.error: pass
 
 def draw_player(stdscr,player,cam,sh,sw,world,nl):
@@ -567,16 +553,17 @@ def draw_hawk(stdscr,hawk,nl):
 
 def draw_danger(stdscr,world,cam,sh,sw):
     col=curses.color_pair(16)|curses.A_BOLD
+    # drastically reducing danger marker noise. only show if train
     for sy in range(sh):
         wr=cam+sy; lane=world.get_lane(wr)
-        if lane is None: continue
-        if lane['type'] in ('road','ice'):
-            for c in lane.get('cars',[]):
-                cx=int(c['x'])
-                dx=cx+CAR_LEN if lane['direction']=='right' else cx-1
-                if 0<=dx<sw:
-                    try: stdscr.addch(sy,dx,'!',col)
-                    except curses.error: pass
+        if lane and lane['type'] == 'train' and lane['train_x'] is not None:
+            tx=int(lane['train_x'])
+            if tx<0:
+                try: stdscr.addch(sy,0,'<',col)
+                except curses.error: pass
+            elif tx>sw:
+                try: stdscr.addch(sy,sw-1,'>',col)
+                except curses.error: pass
 
 def draw_rain(stdscr,weather,sh,sw):
     if not weather.active: return
