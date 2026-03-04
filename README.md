@@ -8,13 +8,15 @@ A procedural tile-based endless runner written entirely in Python using Pygame. 
 - Pygame (`pip install pygame`)
 - Standard library (`json`, `os`, `configparser`, `random`, `math`, `datetime`, `array`)
 
-## How to Run
+## How to Play
 
-1. Clone the repository.
-2. Install dependencies.
-3. Execute `py main.py` or `python main.py` in the root folder.
+1. **Launch from Terminal:** Open your terminal (PowerShell, CMD, or VS Code Terminal), navigate to the project directory, and run the game using Python:
+   ```bash
+   python main.py
+   ```
+2. The game will launch in a new 800x600 graphical window. Make sure the window is selected to capture your keyboard inputs!
 
-## Controls
+## Play Controls
 
 - **Movement:** WASD or Arrow Keys (configurable via config file)
 - **Menu Selection:** Left/Right Arrows, Enter
