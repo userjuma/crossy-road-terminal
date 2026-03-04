@@ -195,11 +195,11 @@ class Renderer:
         if pr_clipped.height <= 0: return
         
         # Base body
-        color = (200, 200, 200)
+        color = (255, 255, 255) # default white chicken
         if player.char_id == "Tank": color = (100, 120, 100)
         elif player.char_id == "Gambler": color = (255, 180, 50)
         elif player.char_id == "Runner": color = (50, 150, 255)
-        elif player.char_id == "Ghost": color = (200, 200, 255, 150) # Alpha ignored without surface but okay
+        elif player.char_id == "Ghost": color = (200, 200, 255, 150)
         
         if player.char_id == "Ghost":
             surf = pygame.Surface((ps, ps), pygame.SRCALPHA)
@@ -208,17 +208,28 @@ class Renderer:
         else:
             pygame.draw.rect(screen, color, pr_clipped)
             
-        # Face (eyes and mouth)
-        ex1 = px + offset + ps//4
+        # Chicken Details
+        # Comb (Red top)
+        comb_r = pygame.Rect(px + offset + ps//2 - 4, screen_y + offset, 8, 4).clip(pr_clipped)
+        if comb_r.height > 0: pygame.draw.rect(screen, (220, 20, 20), comb_r)
+        
+        # Eyes
+        ex1 = px + offset + ps//4 + 2
         ex2 = px + offset + 3*ps//4 - 4
-        ey = screen_y + offset + ps//4
-        if pr_clipped.collidepoint(ex1, ey): pygame.draw.rect(screen, (0,0,0), (ex1, ey, 4, 4))
-        if pr_clipped.collidepoint(ex2, ey): pygame.draw.rect(screen, (0,0,0), (ex2, ey, 4, 4))
-        my = screen_y + offset + 2*ps//3
-        mx = px + offset + ps//4 + 2
-        mw = ps//2 - 4
-        mr = pygame.Rect(mx, my, mw, 2).clip(pr_clipped)
-        if mr.width > 0: pygame.draw.rect(screen, (0,0,0), mr)
+        ey = screen_y + offset + ps//4 + 2
+        if pr_clipped.collidepoint(ex1, ey): pygame.draw.rect(screen, (0,0,0), (ex1, ey, 3, 3))
+        if pr_clipped.collidepoint(ex2, ey): pygame.draw.rect(screen, (0,0,0), (ex2, ey, 3, 3))
+        
+        # Beak
+        beak_r = pygame.Rect(px + offset + ps//2 - 4, screen_y + offset + ps//2 - 2, 8, 6).clip(pr_clipped)
+        if beak_r.height > 0: pygame.draw.rect(screen, (255, 150, 0), beak_r)
+        
+        # Wings (side patches)
+        wing_c = (max(0, color[0]-40), max(0, color[1]-40), max(0, color[2]-40)) if len(color) == 3 else (150,150,150)
+        w1_r = pygame.Rect(px + offset, screen_y + offset + ps//2, 4, ps//2).clip(pr_clipped)
+        w2_r = pygame.Rect(px + offset + ps - 4, screen_y + offset + ps//2, 4, ps//2).clip(pr_clipped)
+        if w1_r.width > 0: pygame.draw.rect(screen, wing_c, w1_r)
+        if w2_r.width > 0: pygame.draw.rect(screen, wing_c, w2_r)
 
     def draw_hud(self, screen, world, score, mult, coins, player_lives, biome, cam_y):
         # Pygame fonts
