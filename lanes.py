@@ -115,6 +115,7 @@ class Lane:
                     
         elif self.type == 'river':
             if player.char_id == 'Ghost':
+                player.lives = 0 # instant death
                 return True # Ghosts sink through logs
             on_log = None
             for e in self.entities:
@@ -122,6 +123,7 @@ class Lane:
                     on_log = e
                     break
             if not on_log:
+                player.lives = 0 # instant death
                 return True # fell in water
             else:
                 # Drift with log
@@ -130,6 +132,7 @@ class Lane:
                 if player.char_id == 'Runner': dx *= 1.5
                 player.x += dx if on_log.direction == 'right' else -dx
                 if player.x < -0.5 or player.x > 19.5:
+                    player.lives = 0 # instant death
                     return True # drifted off screen
                     
         elif self.type == 'train':
