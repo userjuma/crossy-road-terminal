@@ -125,10 +125,10 @@ class Game:
                 start_x = -5 if random.random() < 0.5 else 25
                 self.eagle = {
                     'x': start_x,
-                    'y': self.player.y - 8,
+                    'y': self.camera_y + 20, # spawn off the top of the screen
                     'dir_x': 1 if start_x < 0 else -1,
-                    'dir_y': 0.6,
-                    'speed': 18.0
+                    'dir_y': -1.2, # fly downwards (negative Y)
+                    'speed': 25.0
                 }
         else:
             self.eagle['x'] += self.eagle['dir_x'] * self.eagle['speed'] * dt
@@ -139,7 +139,7 @@ class Game:
                 self.player.take_hit()
                 self.audio.play_death()
                 
-            if self.eagle['y'] > self.player.y + 15:
+            if self.eagle['y'] < self.camera_y - 5: # clear when it flies off the bottom
                 self.eagle = None
                 self.eagle_timer = random.uniform(20.0, 35.0)
 
