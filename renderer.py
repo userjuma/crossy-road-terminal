@@ -204,6 +204,11 @@ class Renderer:
         is_ghost = getattr(player, 'is_ghost_replay', False) or player.char_id == "Ghost"
         alpha = 100 if is_ghost else 255
         
+        # Blink effect if damaged (invincible)
+        if getattr(player, 'invincible', False) and not is_ghost:
+            if int(getattr(player, 'invinc_timer', 0) * 10) % 2 == 0:
+                return # Skip draw to create flashing effect
+        
         surf = pygame.Surface((ps, ps), pygame.SRCALPHA)
         
         # Body
