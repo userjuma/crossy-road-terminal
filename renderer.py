@@ -221,7 +221,7 @@ class Renderer:
         mr = pygame.Rect(mx, my, mw, 2).clip(pr_clipped)
         if mr.width > 0: pygame.draw.rect(screen, (0,0,0), mr)
 
-    def draw_hud(self, screen, score, mult, coins, lives, biome):
+    def draw_hud(self, screen, world, score, mult, coins, player_lives, biome, cam_y):
         # Pygame fonts
         if not pygame.font.get_init():
             pygame.font.init()
@@ -248,10 +248,35 @@ class Renderer:
         screen.blit(b_txt, (self.ox + self.play_w // 2 - b_txt.get_width()//2, 20))
         
         # Lives (Heart icons)
-        for i in range(lives):
+        for i in range(player_lives):
             hx = self.ox + self.play_w - 30 - (i * 25)
             hy = 25
             pygame.draw.polygon(screen, (255, 50, 50), [(hx, hy+5), (hx-5, hy), (hx-5, hy-5), (hx, hy-2), (hx+5, hy-5), (hx+5, hy)])
             
+        # Minimap (top right corner of play area)
+        map_w = 40
+        map_h = 50
+        map_x = self.ox + self.play_w - map_w - 10
+        map_y = self.oy + 10
+        pygame.draw.rect(screen, (0, 0, 0), (map_x, map_y, map_w, map_h))
+        pygame.draw.rect(screen, (255, 255, 255), (map_x, map_y, map_w, map_h), 1)
+        
+        # 5 rows ahead of camera (cam_y to cam_y + 5)
+        for i in range(5):
+            ly = int(cam_y) + i
+            lane = world.get_lane(ly)
+            if not lane: continue
+            
+            c = (50, 160, 60) # grass
+            if lane.type == 'road': c = (100, 100, 100)
+            elif lane.type == 'river': c = (40, 100, 200)
+            elif lane.type == 'train': c = (50, 30, 30)
+            elif lane.type == 'ice': c = (200, 230, 255)
+            elif lane.type == 'mud': c = (80, 50, 20)
+            
+            bh = map_h // 5
+            by = map_y + map_h - (i * bh) - bh # draw bottom-up
+            pygame.draw.rect(screen, c, (map_x + 1, by, map_w - 2, bh))
+
     def update_time(self, dt):
         self.time_offset += dt

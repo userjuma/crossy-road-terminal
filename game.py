@@ -164,7 +164,7 @@ class Game:
             self.renderer.draw_player(screen, self.ghost_player, self.camera_y)
             
         self.renderer.draw_player(screen, self.player, self.camera_y)
-        self.renderer.draw_hud(screen, self.score, self.multiplier, self.coins_collected, self.player.lives, self.world.current_biome)
+        self.renderer.draw_hud(screen, self.world, self.score, self.multiplier, self.coins_collected, self.player.lives, self.world.current_biome, self.camera_y)
         
         if self.paused:
             overlay = pygame.Surface((800, 600), pygame.SRCALPHA)
