@@ -51,8 +51,8 @@ class Player:
         for event in events:
             if event.type == pygame.KEYDOWN:
                 k = event.key
-                if k == up_key or k == pygame.K_UP: dy = -1
-                elif k == down_key or k == pygame.K_DOWN: dy = 1
+                if k == up_key or k == pygame.K_UP: dy = 1
+                elif k == down_key or k == pygame.K_DOWN: dy = -1
                 elif k == left_key or k == pygame.K_LEFT: dx = -1
                 elif k == right_key or k == pygame.K_RIGHT: dx = 1
                 

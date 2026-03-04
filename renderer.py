@@ -27,12 +27,11 @@ class Renderer:
         start_row = int(cam_y)
         end_row = int(cam_y) + self.grid_h + 1
         
-        for y in range(start_row - 1, end_row + 1):
+        for y in range(start_row - 2, end_row + 2):
             lane = world.get_lane(y)
-            if not lane:
-                continue
+            if not lane: continue
                 
-            screen_y = self.oy + (y - cam_y) * self.tile_size
+            screen_y = self.oy + (self.grid_h - 1 - (y - cam_y)) * self.tile_size
             if screen_y + self.tile_size < self.oy or screen_y > self.oy + self.play_h:
                 continue
                 
@@ -174,7 +173,7 @@ class Renderer:
     def draw_player(self, screen, player, cam_y):
         ts = self.tile_size
         px = self.ox + int(player.x * ts)
-        screen_y = self.oy + (player.y - cam_y) * ts
+        screen_y = self.oy + (self.grid_h - 1 - (player.y - cam_y)) * ts
         
         if not (self.oy <= screen_y <= self.oy + self.play_h): return
         
@@ -228,29 +227,29 @@ class Renderer:
         font = pygame.font.SysFont("Courier", 20, bold=True)
         
         # Background bar
-        pygame.draw.rect(screen, (30, 30, 30), (self.ox, 10, self.play_w, 40))
-        pygame.draw.rect(screen, (100, 100, 100), (self.ox, 10, self.play_w, 40), 2)
+        pygame.draw.rect(screen, (30, 30, 30), (self.ox, 10, self.play_w, 50))
+        pygame.draw.rect(screen, (100, 100, 100), (self.ox, 10, self.play_w, 50), 2)
         
         # Score & Multiplier
         s_txt = font.render(f"Score: {score}", True, (255, 255, 255))
-        screen.blit(s_txt, (self.ox + 10, 20))
+        screen.blit(s_txt, (self.ox + 10, 15))
         
         if mult > 1:
             m_txt = font.render(f"x{mult}", True, (255, 200, 50))
-            screen.blit(m_txt, (self.ox + 10 + s_txt.get_width() + 10, 20))
+            screen.blit(m_txt, (self.ox + 10 + s_txt.get_width() + 10, 15))
             
         # Coins
         c_txt = font.render(f"Coins: {coins}", True, (255, 215, 0))
-        screen.blit(c_txt, (self.ox + 200, 20))
+        screen.blit(c_txt, (self.ox + 10, 35))
         
         # Biome
         b_txt = font.render(f"[{biome}]", True, (150, 255, 150))
-        screen.blit(b_txt, (self.ox + self.play_w // 2 - b_txt.get_width()//2, 20))
+        screen.blit(b_txt, (self.ox + self.play_w // 2 - b_txt.get_width()//2, 25))
         
         # Lives (Heart icons)
         for i in range(player_lives):
             hx = self.ox + self.play_w - 30 - (i * 25)
-            hy = 25
+            hy = 30
             pygame.draw.polygon(screen, (255, 50, 50), [(hx, hy+5), (hx-5, hy), (hx-5, hy-5), (hx, hy-2), (hx+5, hy-5), (hx+5, hy)])
             
         # Minimap (top right corner of play area)
