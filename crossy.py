@@ -8,6 +8,8 @@ import configparser
 import traceback
 from datetime import date
 
+PLAY_W = 80
+PLAY_H = 24
 FPS = 15
 FRAME_TIME = 1.0 / FPS
 CAR_RIGHT = 'o-o'
@@ -197,11 +199,12 @@ def generate_lane(row_index,sw,score):
         return {'type':'grass','row':row_index,'coins':_place_coins(sw,diff),'biome':biome}
     bs = 0.5+diff*1.5; speed = max(0.3,bs+random.uniform(-0.2,0.4))
     if lt=='road':
-        nc=random.randint(2,3+int(diff*3)); sp=max(5,int(sw/nc)-int(diff*4))
+        nc=random.randint(1,min(3, 1+int(diff*2)))
+        sp=max(9, int(sw/nc))
         cars=[]
         for i in range(nc):
             c=make_car(sw,direction)
-            c['x']=float((-CAR_LEN-i*sp+random.randint(0,2)) if direction=='right' else (sw+i*sp-random.randint(0,2)))
+            c['x']=float((-CAR_LEN-i*sp) if direction=='right' else (sw+i*sp))
             cars.append(c)
         return {'type':'road','row':row_index,'direction':direction,'speed':speed,'cars':cars,'biome':biome}
     if lt=='river':
@@ -460,21 +463,34 @@ def get_seasonal():
 
 CB_PATTERNS = {'grass':'.',  'road':'#',  'river':'~',  'train':'=',  'wind':'>',  'ice':'*',  'mud':'%',  'dead_end':'|'}
 
-def draw_lane(stdscr,sy,lane,sw,nl,fc,colorblind=False):
-    if sy<0 or sy>=curses.LINES-1: return
+def draw_frame(stdscr,ox,oy,w,h,nl):
+    col=night_attr(curses.color_pair(2),nl)
+    try:
+        if 0<=oy-1<curses.LINES: stdscr.addstr(oy-1,ox,'-'*w,col)
+        if 0<=oy+h<curses.LINES: stdscr.addstr(oy+h,ox,'-'*w,col)
+        for y in range(-1,h+1):
+            if 0<=oy+y<curses.LINES:
+                if 0<=ox-1<curses.COLS: stdscr.addch(oy+y,ox-1,'|',col)
+                if 0<=ox+w<curses.COLS: stdscr.addch(oy+y,ox+w,'|',col)
+    except curses.error: pass
+
+def draw_lane(stdscr,sy,lane,sw,nl,fc,colorblind=False,ox=0,oy=0):
+    if sy<0 or sy>=PLAY_H: return
+    dy=oy+sy
+    if not(0<=dy<curses.LINES): return
     lt=lane['type']
     if lt=='grass':
         col=night_attr(curses.color_pair(1),nl)
         rng=random.Random(lane['row']*997)
         for gx in range(0,sw,rng.choice([4,5,7])):
-            if gx<sw:
-                try: stdscr.addch(sy,gx,'.',col)
+            if gx<sw and 0<=ox+gx<curses.COLS:
+                try: stdscr.addch(dy,ox+gx,'.',col)
                 except curses.error: pass
         if 'coins' in lane:
             cc=night_attr(curses.color_pair(10),nl)
             for coin in lane['coins']:
-                if not coin['collected'] and 0<=coin['x']<sw:
-                    try: stdscr.addch(sy,coin['x'],COIN_CHAR,cc|curses.A_BOLD)
+                if not coin['collected'] and 0<=coin['x']<sw and 0<=ox+coin['x']<curses.COLS:
+                    try: stdscr.addch(dy,ox+coin['x'],COIN_CHAR,cc|curses.A_BOLD)
                     except curses.error: pass
     elif lt in ('road','ice'):
         col=night_attr(curses.color_pair(3) if lt=='ice' else curses.color_pair(8),nl)
@@ -483,108 +499,117 @@ def draw_lane(stdscr,sy,lane,sw,nl,fc,colorblind=False):
             cx=int(c['x'])
             for i,ch in enumerate(cs):
                 px=cx+i
-                if 0<=px<sw:
-                    try: stdscr.addch(sy,px,ch,col|curses.A_BOLD)
+                if 0<=px<sw and 0<=ox+px<curses.COLS:
+                    try: stdscr.addch(dy,ox+px,ch,col|curses.A_BOLD)
                     except curses.error: pass
     elif lt=='river':
         col=night_attr(curses.color_pair(9),nl)
+        try: stdscr.addstr(dy,ox,('~'*sw)[:curses.COLS-ox],col|curses.A_DIM)
+        except curses.error: pass
         for lg in lane.get('logs',[]):
             lx=int(lg['x']); ls='['+('='*(lg['length']-2))+']'
             for i,ch in enumerate(ls):
                 px=lx+i
-                if 0<=px<sw:
-                    try: stdscr.addch(sy,px,ch,col|curses.A_BOLD)
+                if 0<=px<sw and 0<=ox+px<curses.COLS:
+                    try: stdscr.addch(dy,ox+px,ch,col|curses.A_BOLD)
                     except curses.error: pass
     elif lt=='train':
         tc=night_attr(curses.color_pair(11),nl)
         warn=(lane['train_x'] is None and lane['time_since_last']>=lane['cooldown'] and lane['warning_timer']>0)
         if warn and fc%6<3: tc=curses.color_pair(12)|curses.A_BOLD
         if warn:
-            try: stdscr.addstr(sy,0,'!'*sw,tc)
+            try: stdscr.addstr(dy,ox,('!'*sw)[:curses.COLS-ox],tc)
             except curses.error: pass
         if lane['train_x'] is not None:
             tx=int(lane['train_x'])
             for i in range(lane['train_length']):
                 px=tx+i
-                if 0<=px<sw:
-                    try: stdscr.addch(sy,px,'=',tc|curses.A_BOLD)
+                if 0<=px<sw and 0<=ox+px<curses.COLS:
+                    try: stdscr.addch(dy,ox+px,'=',tc|curses.A_BOLD)
                     except curses.error: pass
     elif lt=='wind':
         col=night_attr(curses.color_pair(5),nl)
         wc='>' if lane['wind_dir']=='right' else '<'
         rng=random.Random(lane['row']*1013+fc//4)
         for wx in range(rng.randint(0,3),sw,rng.randint(6,10)):
-            if 0<=wx<sw:
-                try: stdscr.addch(sy,wx,wc,col)
+            if 0<=wx<sw and 0<=ox+wx<curses.COLS:
+                try: stdscr.addch(dy,ox+wx,wc,col)
                 except curses.error: pass
     elif lt=='mud':
         col=night_attr(curses.color_pair(8),nl)
         for mx in range(0,sw,3):
-            try: stdscr.addch(sy,mx,'"',col)
-            except curses.error: pass
+            if 0<=ox+mx<curses.COLS:
+                try: stdscr.addch(dy,ox+mx,'"',col)
+                except curses.error: pass
     elif lt=='dead_end':
         col=night_attr(curses.color_pair(8),nl)|curses.A_BOLD
         gx=lane['gap_x']; gw=lane['gap_w']
         try:
-            stdscr.addstr(sy,0,'|'*sw,col)
+            stdscr.addstr(dy,ox,('|'*sw)[:curses.COLS-ox],col)
             for px in range(gx,min(gx+gw,sw)):
-                stdscr.addch(sy,px,' ',col)
+                if 0<=ox+px<curses.COLS:
+                    stdscr.addch(dy,ox+px,' ',col)
         except curses.error: pass
 
-def draw_player(stdscr,player,cam,sh,sw,world,nl):
+def draw_player(stdscr,player,cam,sh,sw,world,nl,ox=0,oy=0):
     sy=player.y-cam; sx=int(player.x)
-    if not(0<=sy<sh and 0<=sx<sw): return
+    if not(0<=sy<PLAY_H and 0<=sx<PLAY_W): return
     if player.invincible_timer>0 and int(player.invincible_timer*FPS)%4<2: return
     lane=world.get_lane(player.y)
     tp={'grass':7,'road':8,'river':9,'wind':14,'train':17,'ice':9,'mud':8,'dead_end':8}
     pair=tp.get(lane['type'],4) if lane else 4
-    # color shifts when lives are low
     if player.lives==1 and player.max_lives>1: pair=6
-    pc=night_attr(curses.color_pair(pair),nl)|curses.A_BOLD
-    try: stdscr.addch(sy,sx,player.get_char(),pc)
-    except curses.error: pass
+    pc=night_attr(curses.color_pair(pair),nl)|curses.A_BOLD|curses.A_REVERSE
+    if 0<=oy+sy<curses.LINES and 0<=ox+sx<curses.COLS:
+        try: stdscr.addch(oy+sy,ox+sx,player.get_char(),pc)
+        except curses.error: pass
 
-def draw_hawk(stdscr,hawk,nl):
+def draw_hawk(stdscr,hawk,nl,ox=0,oy=0):
     if not hawk.active: return
     hx=int(hawk.x); hy=int(hawk.y)
+    if not(0<=hy<PLAY_H and 0<=hx<PLAY_W): return
     col=curses.color_pair(19)|curses.A_BOLD
-    try: stdscr.addch(hy,hx,'V',col)
-    except curses.error: pass
+    if 0<=oy+hy<curses.LINES and 0<=ox+hx<curses.COLS:
+        try: stdscr.addch(oy+hy,ox+hx,'V',col)
+        except curses.error: pass
 
-def draw_danger(stdscr,world,cam,sh,sw):
+def draw_danger(stdscr,world,cam,sh,sw,ox=0,oy=0):
     col=curses.color_pair(16)|curses.A_BOLD
-    # drastically reducing danger marker noise. only show if train
-    for sy in range(sh):
+    for sy in range(PLAY_H):
         wr=cam+sy; lane=world.get_lane(wr)
         if lane and lane['type'] == 'train' and lane['train_x'] is not None:
             tx=int(lane['train_x'])
-            if tx<0:
-                try: stdscr.addch(sy,0,'<',col)
-                except curses.error: pass
-            elif tx>sw:
-                try: stdscr.addch(sy,sw-1,'>',col)
-                except curses.error: pass
+            if 0<=oy+sy<curses.LINES:
+                if tx<0 and 0<=ox<curses.COLS:
+                    try: stdscr.addch(oy+sy,ox,'<',col)
+                    except curses.error: pass
+                elif tx>PLAY_W and 0<=ox+PLAY_W-1<curses.COLS:
+                    try: stdscr.addch(oy+sy,ox+PLAY_W-1,'>',col)
+                    except curses.error: pass
 
-def draw_rain(stdscr,weather,sh,sw):
+def draw_rain(stdscr,weather,sh,sw,ox=0,oy=0):
     if not weather.active: return
     col=curses.color_pair(15)
     for d in weather.drops:
         dy=int(d['y']); dx=int(d['x'])
-        if 0<=dy<sh-1 and 0<=dx<sw:
-            try: stdscr.addch(dy,dx,d['char'],col)
-            except curses.error: pass
+        if 0<=dy<PLAY_H-1 and 0<=dx<PLAY_W:
+            if 0<=oy+dy<curses.LINES and 0<=ox+dx<curses.COLS:
+                try: stdscr.addch(oy+dy,ox+dx,d['char'],col)
+                except curses.error: pass
 
-def draw_hud(stdscr,player,sw,nl):
+def draw_hud(stdscr,player,sw,nl,ox=0,oy=0):
     parts=[]
     parts.append(f' Score:{player.score}')
     if player.streak_mult>1: parts.append(f' x{player.streak_mult}')
     if player.coins>0: parts.append(f' Coins:{player.coins}')
     parts.append(f' Lives:{player.lives}')
-    hud=''.join(parts)+' '
-    x=max(0,sw-len(hud)-1)
+    hud=''.join(parts)
     col=night_attr(curses.color_pair(5)|curses.A_BOLD,nl)
-    try: stdscr.addstr(0,x,hud,col)
-    except curses.error: pass
+    y = max(0, oy-2)
+    x = max(0, ox + PLAY_W - len(hud))
+    if y<curses.LINES and x<curses.COLS:
+        try: stdscr.addstr(y,x,hud,col)
+        except curses.error: pass
 
 def draw_game_over(stdscr,player,sh,sw,pb):
     lines=[player.death_reason,'',f'Final Score: {player.score}',f'Coins: {player.coins}',
@@ -709,8 +734,9 @@ def select_character(stdscr,save):
 def play_replay(stdscr,replay_data,save,char_id):
     stdscr.nodelay(True); curses.curs_set(0)
     sh,sw=stdscr.getmaxyx(); controls=save['controls']
-    world=World(sw,sh); player=Player(sw//2,0,char_id)
-    cam=-(sh-2); weather=Weather(sw,sh)
+    if sh < PLAY_H+3 or sw < PLAY_W+2: return
+    world=World(PLAY_W,PLAY_H); player=Player(PLAY_W//2,0,char_id)
+    cam=-(PLAY_H-2); weather=Weather(PLAY_W,PLAY_H)
     imap={}
     for(f,k) in replay_data.inputs:
         imap.setdefault(f,[]).append(k)
@@ -720,7 +746,9 @@ def play_replay(stdscr,replay_data,save,char_id):
         key=stdscr.getch()
         if key in(ord('q'),ord('Q'),27): break
         nh,nw=stdscr.getmaxyx()
-        if nh!=sh or nw!=sw: sh,sw=nh,nw; world.screen_width=sw; world.screen_height=sh; weather.resize(sw,sh)
+        if nh!=sh or nw!=sw: sh,sw=nh,nw
+        if sh < PLAY_H+3 or sw < PLAY_W+2: break
+        ox=max(0,(sw-PLAY_W)//2); oy=max(0,(sh-PLAY_H)//2)
         if frame in imap:
             for rk in imap[frame]:
                 dx,dy=0,0
@@ -728,20 +756,21 @@ def play_replay(stdscr,replay_data,save,char_id):
                 elif rk in(curses.KEY_DOWN,controls.get('down',115)): dy=1
                 elif rk in(curses.KEY_LEFT,controls.get('left',97)): dx=-1
                 elif rk in(curses.KEY_RIGHT,controls.get('right',100)): dx=1
-                if dx or dy: player.move(dx,dy,sw)
+                if dx or dy: player.move(dx,dy,PLAY_W)
         dt=FRAME_TIME; world.update(dt,player.score); player.update(dt)
         apply_log_drift(player,world,dt,player.score); apply_wind(player,world,dt)
-        tc=player.y-sh+sh//3
+        tc=player.y-PLAY_H+PLAY_H//3
         if tc<cam: cam=tc
-        if player.y>cam+sh-1: break
+        if player.y>cam+PLAY_H-1: break
         world.ensure_lanes(cam,player.score); check_collisions(player,world,False)
         nl=get_night_level(player.score); weather.update(dt)
         stdscr.erase()
-        for sy in range(sh):
+        draw_frame(stdscr,ox,oy,PLAY_W,PLAY_H,nl)
+        for sy in range(PLAY_H):
             wr=cam+sy; lane=world.get_lane(wr)
-            if lane: draw_lane(stdscr,sy,lane,sw,nl,frame)
-        draw_player(stdscr,player,cam,sh,sw,world,nl)
-        draw_rain(stdscr,weather,sh,sw); draw_hud(stdscr,player,sw,nl)
+            if lane: draw_lane(stdscr,sy,lane,PLAY_W,nl,frame,ox=ox,oy=oy)
+        draw_player(stdscr,player,cam,PLAY_H,PLAY_W,world,nl,ox=ox,oy=oy)
+        draw_rain(stdscr,weather,PLAY_H,PLAY_W,ox=ox,oy=oy); draw_hud(stdscr,player,PLAY_W,nl,ox=ox,oy=oy)
         try: stdscr.addstr(0,0,' REPLAY (Q to stop) ',curses.color_pair(6)|curses.A_BOLD)
         except curses.error: pass
         stdscr.refresh(); frame+=1
@@ -775,19 +804,23 @@ def handle_input(stdscr,player,world,controls,replay):
 def game_loop(stdscr,save,daily=False):
     curses.curs_set(0); stdscr.nodelay(True); stdscr.timeout(0); init_colors()
     sh,sw=stdscr.getmaxyx(); controls=save['controls']
+    if sh < PLAY_H+3 or sw < PLAY_W+2: return 0,Replay(),True,'classic'
     cfg=load_config(); colorblind=cfg['settings'].get('colorblind','false')=='true'
     sound_on=cfg['settings'].get('sound','true')=='true'
     char_id=save.get('selected_char','classic')
     if char_id not in save.get('unlocked',['classic']): char_id='classic'
     if daily:
         seed=date.today().toordinal(); random.seed(seed)
-    world=World(sw,sh); player=Player(sw//2,0,char_id)
-    cam=-(sh-2); weather=Weather(sw,sh); hawk=Hawk(sw,sh)
+    world=World(PLAY_W,PLAY_H); player=Player(PLAY_W//2,0,char_id)
+    cam=-(PLAY_H-2); weather=Weather(PLAY_W,PLAY_H); hawk=Hawk(PLAY_W,PLAY_H)
     replay=Replay(); fc=0; ms_text=''; ms_timer=0.0; shown_ms=set()
     while True:
         fs=time.time()
         nh,nw=stdscr.getmaxyx()
-        if nh!=sh or nw!=sw: sh,sw=nh,nw; world.screen_width=sw; world.screen_height=sh; weather.resize(sw,sh); hawk.resize(sw,sh)
+        if nh!=sh or nw!=sw: sh,sw=nh,nw
+        if sh < PLAY_H+3 or sw < PLAY_W+2: return player.score,replay,True,char_id
+        ox=max(0,(sw-PLAY_W)//2); oy=max(0,(sh-PLAY_H)//2)
+        
         action=handle_input(stdscr,player,world,controls,replay)
         if action=='quit': return player.score,replay,True,char_id
         if action=='pause':
@@ -801,21 +834,19 @@ def game_loop(stdscr,save,daily=False):
             stdscr.nodelay(True)
         if not player.alive: break
         dt=FRAME_TIME; world.update(dt,player.score); player.update(dt)
-        # process delayed ice input
         if player.ice_queue:
-            player.move(player.ice_queue[0],player.ice_queue[1],world.screen_width)
+            player.move(player.ice_queue[0],player.ice_queue[1],PLAY_W)
             player.ice_queue=None
         apply_log_drift(player,world,dt,player.score); apply_wind(player,world,dt)
         hawk.update(dt,player.score)
         if hawk.check_hit(int(player.x),player.y,cam):
             player.take_hit('Snatched by a hawk!',sound_on)
         if not player.alive: break
-        tc=player.y-sh+sh//3
+        tc=player.y-PLAY_H+PLAY_H//3
         if tc<cam: cam=tc
-        if player.y>cam+sh-1: player.alive=False; player.death_reason='Left behind!'; break
+        if player.y>cam+PLAY_H-1: player.alive=False; player.death_reason='Left behind!'; break
         world.ensure_lanes(cam,player.score); check_collisions(player,world,sound_on)
         if not player.alive: break
-        # milestone flavor text
         for threshold in sorted(MILESTONES_TEXT.keys()):
             if player.score>=threshold and threshold not in shown_ms:
                 shown_ms.add(threshold)
@@ -825,19 +856,20 @@ def game_loop(stdscr,save,daily=False):
                 if sound_on: bell()
         if ms_timer>0: ms_timer-=dt
         nl=get_night_level(player.score); weather.update(dt)
+        
         stdscr.erase()
-        for sy in range(sh):
+        draw_frame(stdscr,ox,oy,PLAY_W,PLAY_H,nl)
+        for sy in range(PLAY_H):
             wr=cam+sy; lane=world.get_lane(wr)
-            if lane: draw_lane(stdscr,sy,lane,sw,nl,fc,colorblind)
-        draw_danger(stdscr,world,cam,sh,sw)
-        draw_player(stdscr,player,cam,sh,sw,world,nl)
-        draw_hawk(stdscr,hawk,nl); draw_rain(stdscr,weather,sh,sw)
-        draw_hud(stdscr,player,sw,nl)
+            if lane: draw_lane(stdscr,sy,lane,PLAY_W,nl,fc,colorblind,ox=ox,oy=oy)
+        draw_danger(stdscr,world,cam,PLAY_H,PLAY_W,ox=ox,oy=oy)
+        draw_player(stdscr,player,cam,PLAY_H,PLAY_W,world,nl,ox=ox,oy=oy)
+        draw_hawk(stdscr,hawk,nl,ox=ox,oy=oy); draw_rain(stdscr,weather,PLAY_H,PLAY_W,ox=ox,oy=oy)
+        draw_hud(stdscr,player,PLAY_W,nl,ox=ox,oy=oy)
         if ms_timer>0: draw_milestone(stdscr,ms_text,sh,sw,ms_timer)
         stdscr.refresh(); replay.tick(); fc+=1
         sl=FRAME_TIME-(time.time()-fs)
         if sl>0: time.sleep(sl)
-    # game over
     pb=save['high_scores'][0] if save['high_scores'] else 0
     record_score(player.score,save); check_unlocks(save,player.score,player.stats)
     npb=save['high_scores'][0] if save['high_scores'] else 0
@@ -845,9 +877,11 @@ def game_loop(stdscr,save,daily=False):
     stdscr.nodelay(False)
     while True:
         stdscr.erase(); sh,sw=stdscr.getmaxyx()
-        for sy in range(sh):
+        ox=max(0,(sw-PLAY_W)//2); oy=max(0,(sh-PLAY_H)//2)
+        draw_frame(stdscr,ox,oy,PLAY_W,PLAY_H,0)
+        for sy in range(PLAY_H):
             wr=cam+sy; lane=world.get_lane(wr)
-            if lane: draw_lane(stdscr,sy,lane,sw,0,fc)
+            if lane: draw_lane(stdscr,sy,lane,PLAY_W,0,fc,ox=ox,oy=oy)
         draw_game_over(stdscr,player,sh,sw,npb); stdscr.refresh()
         key=stdscr.getch()
         if key==curses.KEY_RESIZE: continue
