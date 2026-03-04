@@ -125,10 +125,6 @@ class Game:
         if target_cam > self.camera_y:
             self.camera_y += (target_cam - self.camera_y) * dt * 5.0
             
-        # Auto-scroll forward to force player movement
-        base_scroll = 0.5 + min(3.0, self.score * 0.01)
-        self.camera_y += base_scroll * dt
-            
         # Death conditions
         if self.player.y < self.camera_y - 2:
             self.player.take_hit()

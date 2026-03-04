@@ -50,7 +50,8 @@ def main():
                 state = "game_over"
                 
         elif state == "game_over":
-            action = ui.handle_game_over(events, game)
+            game.draw(screen) # Redraw the game state before handling game over UI
+            action = ui.handle_game_over(events, game) # Keep original UI handling
             if action == "menu":
                 state = "menu"
             elif action == "retry":
