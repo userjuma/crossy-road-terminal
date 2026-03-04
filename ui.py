@@ -91,21 +91,40 @@ class UI:
         
         # High Score processing
         hs = self.save_data.get("high_score", 0)
+        ds = self.save_data.get("daily_score", 0)
         is_new_best = False
+        
+        import datetime
+        today_str = str(datetime.date.today().toordinal())
         
         if not game.is_daily:
             if game.score > hs:
                 hs = game.score
                 self.save_data["high_score"] = hs
+                self.save_data["best_run_replay"] = game.recorded_inputs
                 write_save(self.save_data)
                 is_new_best = True
                 
-        if is_new_best:
-            best_t = self.menu_font.render("NEW PERSONAL BEST!", True, (100, 255, 100))
-            self.screen.blit(best_t, (400 - best_t.get_width()//2, 350))
+            if is_new_best:
+                best_t = self.menu_font.render("NEW PERSONAL BEST!", True, (100, 255, 100))
+                self.screen.blit(best_t, (400 - best_t.get_width()//2, 350))
+            else:
+                best_t = self.small_font.render(f"Personal Best: {hs}", True, (150, 150, 150))
+                self.screen.blit(best_t, (400 - best_t.get_width()//2, 350))
         else:
-            best_t = self.small_font.render(f"Personal Best: {hs}", True, (150, 150, 150))
-            self.screen.blit(best_t, (400 - best_t.get_width()//2, 350))
+            if today_str != self.save_data.get("daily_challenge_played", "") or game.score > ds:
+                ds = game.score
+                self.save_data["daily_challenge_played"] = today_str
+                self.save_data["daily_score"] = ds
+                write_save(self.save_data)
+                is_new_best = True
+                
+            if is_new_best:
+                best_t = self.menu_font.render("NEW DAILY BEST!", True, (100, 255, 100))
+                self.screen.blit(best_t, (400 - best_t.get_width()//2, 350))
+            else:
+                best_t = self.small_font.render(f"Daily Best: {ds}", True, (150, 150, 150))
+                self.screen.blit(best_t, (400 - best_t.get_width()//2, 350))
 
         inst_t = self.small_font.render("[ENTER] Retry | [ESC] Menu", True, (255, 255, 255))
         self.screen.blit(inst_t, (400 - inst_t.get_width()//2, 450))
