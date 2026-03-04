@@ -7,16 +7,17 @@ class Player:
         self.y = int(y)
         self.best_y_this_run = y
         
-        self.lives = 3
+        self.lives = 1 # New default for lives
         self.inv_time = 2.0
         self.speed_mult = 1.0 # default
         
         # Character special rules
         self.ghost_phases = 0
-        if char_id == "Gambler":
-            self.lives = 1
-        elif char_id == "Tank":
-            self.inv_time = 3.5
+        if self.char_id == "Tank":
+            self.lives = 2 # Tank gets 2 lives
+            self.inv_time = 3.5 # Tank invincibility
+        elif self.char_id == "Gambler":
+            self.lives = 1 # Gambler gets 1 life
         elif char_id == "Ghost":
             self.ghost_phases = 1
         elif char_id == "Runner":

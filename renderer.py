@@ -233,6 +233,52 @@ class Renderer:
         # Blit using the clipping rect to handle bounds
         screen.blit(surf, (pr.x, pr.y), (pr_clipped.x - pr.x, pr_clipped.y - pr.y, pr_clipped.width, pr_clipped.height))
 
+    def draw_eagle(self, screen, eagle, cam_y):
+        import math
+        ts = self.tile_size
+        px = self.ox + int(eagle['x'] * ts)
+        screen_y = self.oy + (self.grid_h - 1 - (eagle['y'] - cam_y)) * ts
+        
+        if not (self.oy - 100 <= screen_y <= self.oy + self.play_h + 100): return
+        
+        # Flapping math
+        flap = math.sin(self.time_offset * 15) * 15
+        
+        # Left Wing
+        pygame.draw.polygon(screen, (80, 50, 30), [
+            (px + ts//2, screen_y + ts//2),
+            (px - 20, screen_y + ts//2 + flap),
+            (px + ts//2, screen_y + ts//4)
+        ])
+        # Right Wing
+        pygame.draw.polygon(screen, (80, 50, 30), [
+            (px + ts//2, screen_y + ts//2),
+            (px + ts + 20, screen_y + ts//2 + flap),
+            (px + ts//2, screen_y + ts//4)
+        ])
+        
+        # Tail
+        pygame.draw.polygon(screen, (60, 40, 20), [
+            (px + ts//2 - 8, screen_y - 10),
+            (px + ts//2 + 8, screen_y - 10),
+            (px + ts//2, screen_y + ts//2)
+        ])
+        
+        # Body
+        pygame.draw.polygon(screen, (100, 70, 40), [
+            (px + 4, screen_y), (px + ts - 4, screen_y), (px + ts//2, screen_y + ts)
+        ])
+        
+        # Head (Bald Eagle style)
+        pygame.draw.circle(screen, (255, 255, 255), (int(px + ts//2), int(screen_y + ts)), 8)
+        
+        # Beak
+        pygame.draw.polygon(screen, (255, 200, 0), [
+            (px + ts//2 - 4, screen_y + ts + 4),
+            (px + ts//2 + 4, screen_y + ts + 4),
+            (px + ts//2, screen_y + ts + 12)
+        ])
+
     def draw_hud(self, screen, world, score, mult, coins, player_lives, biome, cam_y):
         # Pygame fonts
         if not pygame.font.get_init():

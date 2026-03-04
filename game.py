@@ -56,6 +56,10 @@ class Game:
         self.paused = False
         self.time_elapsed = 0.0
         
+        # Eagle hazard
+        self.eagle_timer = random.uniform(10.0, 20.0)
+        self.eagle = None
+        
         # Replay system
         self.recorded_inputs = []
         self.ghost_data = save_data.get("best_run_replay", []) if not daily else []
@@ -113,6 +117,31 @@ class Game:
         # Check speed milestones
         old_mult = get_speed_mult(self.score)
 
+        # Eagle logic
+        if self.eagle is None:
+            self.eagle_timer -= dt
+            if self.eagle_timer <= 0:
+                start_x = -5 if random.random() < 0.5 else 25
+                self.eagle = {
+                    'x': start_x,
+                    'y': self.player.y - 8,
+                    'dir_x': 1 if start_x < 0 else -1,
+                    'dir_y': 0.6,
+                    'speed': 18.0
+                }
+        else:
+            self.eagle['x'] += self.eagle['dir_x'] * self.eagle['speed'] * dt
+            self.eagle['y'] += self.eagle['dir_y'] * self.eagle['speed'] * dt
+            
+            if abs(self.eagle['x'] - self.player.x) < 1.0 and abs(self.eagle['y'] - self.player.y) < 1.0:
+                self.player.lives = 0
+                self.player.take_hit()
+                self.audio.play_death()
+                
+            if self.eagle['y'] > self.player.y + 15:
+                self.eagle = None
+                self.eagle_timer = random.uniform(20.0, 35.0)
+
         # Update entities
         self.player.update(dt)
         self.world.update(dt, self.score)
@@ -160,10 +189,14 @@ class Game:
         self.renderer.draw_world(screen, self.world, self.camera_y)
         
         if self.ghost_player:
-            self.ghost_player.char_id = "Ghost"
+            self.ghost_player.char_id = "Ghost" # Kept original char_id assignment
             self.renderer.draw_player(screen, self.ghost_player, self.camera_y)
             
         self.renderer.draw_player(screen, self.player, self.camera_y)
+        
+        if self.eagle:
+            self.renderer.draw_eagle(screen, self.eagle, self.camera_y)
+            
         self.renderer.draw_hud(screen, self.world, self.score, self.multiplier, self.coins_collected, self.player.lives, self.world.current_biome, self.camera_y)
         
         if self.paused:

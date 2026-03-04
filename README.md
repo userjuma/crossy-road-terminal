@@ -36,3 +36,7 @@ Player progress, scores, unlocks, and recorded replays are stored in `save.json`
 
 - Alpha channel rendering for the Ghost player uses a secondary surface blit which can be performance intensive on extremely weak hardware.
 - Procedural audio waveforms rely on a continuous buffer write. Very high frame drops could occasionally desync the beep playback duration.
+
+## Legal Disclaimer
+
+Please note that this is a fan-made educational terminal/Pygame clone. The creator does not own any copyright, trademarks, or intellectual property pertaining to the official "Crossy Road" brand produced by Hipster Whale. All code logic and pixel assets were generated natively for fair use.
