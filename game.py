@@ -1,9 +1,10 @@
 import pygame
+import random
+import array
+import math
 from player import Player
 from lanes import World, get_speed_mult
 from renderer import Renderer
-import array
-import math
 
 class AudioGen:
     def __init__(self):
