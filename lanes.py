@@ -14,6 +14,13 @@ class Coin:
         self.x = x
         self.collected = False
 
+def get_speed_mult(score):
+    if score >= 200: return 2.0
+    if score >= 100: return 1.6
+    if score >= 50: return 1.3
+    if score >= 25: return 1.15
+    return 1.0
+
 class Lane:
     def __init__(self, y, l_type, biome, score):
         self.y = y
@@ -21,17 +28,10 @@ class Lane:
         self.biome = biome
         self.entities = []
         self.coins = []
-        self.speed_mult = self.get_speed_mult(score)
+        self.speed_mult = get_speed_mult(score)
         self.warning_timer = 0.0
         
         self.generate(score)
-        
-    def get_speed_mult(self, score):
-        if score >= 200: return 2.0
-        if score >= 100: return 1.6
-        if score >= 50: return 1.3
-        if score >= 25: return 1.15
-        return 1.0
         
     def generate(self, score):
         # Base speed

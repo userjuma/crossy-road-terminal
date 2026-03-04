@@ -1,6 +1,6 @@
 import pygame
 from player import Player
-from lanes import World
+from lanes import World, get_speed_mult
 from renderer import Renderer
 import array
 import math
@@ -111,13 +111,13 @@ class Game:
                 self.ghost_idx += 1
 
         # Check speed milestones
-        old_mult = self.world.get_speed_mult(self.score)
+        old_mult = get_speed_mult(self.score)
 
         # Update entities
         self.player.update(dt)
         self.world.update(dt, self.score)
         
-        if self.world.get_speed_mult(self.score) > old_mult:
+        if get_speed_mult(self.score) > old_mult:
             self.audio.play_milestone()
         
         # Camera logic
